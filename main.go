@@ -198,6 +198,7 @@ func main() {
 	}
 }
 
+// Install will untar download file in /usr/local folder
 func Install(filename string) (err error) {
 	env := os.Environ()
 
@@ -231,6 +232,7 @@ func Install(filename string) (err error) {
 	return
 }
 
+// GetStringFromText will read file and return its contents
 func GetStringFromText(filename string) (result string, err error) {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
