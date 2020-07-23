@@ -10,8 +10,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -167,8 +167,32 @@ func main() {
 	var err error
 
 	goVersion := flag.String("version", "1.14.6", "Go version")
+	goDirectory := flag.String("directory", "/usr/local", "Go install directory")
 	skipDownload := flag.Bool("skip-download", false, "Skip download")
+	checkVersion := flag.Bool("check-version", false, "Check the latest Go version")
 	flag.Parse()
+
+	if *checkVersion {
+		latestVersion := checkLatestVersion()
+		log.Println(latestVersion, "is the latest version")
+
+		return
+	}
+
+	versionFilename := *goDirectory + "/go/VERSION"
+	versionBefore, err := GetStringFromText(versionFilename)
+	if err != nil {
+		log.Println("can't determine go installed version because go is not installed")
+	} else {
+		log.Println("version before install", versionBefore)
+	}
+
+	// TODO maybe not the best check
+	if strings.Contains(versionBefore, *goVersion) {
+		log.Println(*goVersion, "is already installed")
+
+		return
+	}
 
 	log.Println("Go version to be installed", *goVersion)
 	log.Println("Skip download", *skipDownload)
@@ -192,35 +216,9 @@ func main() {
 		log.Println("skipping download")
 	}
 
-	err = Install(filename)
+	err = Install(filename, *goDirectory)
 	if err != nil {
 		log.Println("error installing go", err)
-	}
-}
-
-// Install will untar download file in /usr/local folder
-func Install(filename string) (err error) {
-	env := os.Environ()
-
-	versionFilename := "/usr/local/go/VERSION"
-	versionBefore, err := GetStringFromText(versionFilename)
-	if err != nil {
-		return
-	}
-	log.Println("version before install", versionBefore)
-
-	binTar, err := exec.LookPath("tar")
-	if err != nil {
-		return
-	}
-	log.Println("tar found at", binTar)
-
-	argsTar := []string{"tar", "-C", "/usr/local", "-xzf", filepath.Join(downloadFolder, filename)}
-
-	// TODO this will exit
-	err = syscall.Exec(binTar, argsTar, env)
-	if err != nil {
-		return
 	}
 
 	versionAfter, err := GetStringFromText(versionFilename)
@@ -228,6 +226,27 @@ func Install(filename string) (err error) {
 		return
 	}
 	log.Println("version after install", versionAfter)
+}
+
+func checkLatestVersion() string {
+	// TODO implement
+
+	return ""
+}
+
+// Install will untar download file in specified directory
+func Install(filename string, directory string) (err error) {
+
+	cmd := exec.Command("/bin/tar", "-C", directory, "-xzf", filepath.Join(downloadFolder, filename))
+	err = cmd.Start()
+	if err != nil {
+		return
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		return
+	}
 
 	return
 }
