@@ -9,10 +9,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/antchfx/htmlquery"
 )
 
 const downloadFolder = "download"
@@ -169,13 +172,16 @@ func main() {
 	goVersion := flag.String("version", "1.14.6", "Go version")
 	goDirectory := flag.String("directory", "/usr/local", "Go install directory")
 	skipDownload := flag.Bool("skip-download", false, "Skip download")
-	checkVersion := flag.Bool("check-version", false, "Check the latest Go version")
+	checkVersionOnly := flag.Bool("check-version-only", false, "Check the latest Go version and quit")
 	flag.Parse()
 
-	if *checkVersion {
-		latestVersion := checkLatestVersion()
-		log.Println(latestVersion, "is the latest version")
+	latestVersion, err := checkLatestVersion()
+	if err != nil {
+		log.Println("can't determine latest version", err)
+	}
+	log.Println(latestVersion, "is the latest version")
 
+	if *checkVersionOnly {
 		return
 	}
 
@@ -228,10 +234,19 @@ func main() {
 	log.Println("version after install", versionAfter)
 }
 
-func checkLatestVersion() string {
-	// TODO implement
+func checkLatestVersion() (result string, err error) {
+	doc, err := htmlquery.LoadURL("https://golang.org/dl/")
+	list := htmlquery.Find(doc, "//span[@class='filename']")
+	re := regexp.MustCompile(`(\d+\.\d+\.\d+)`)
+	for _, n := range list {
+		version := []byte(htmlquery.InnerText(n))
+		if re.Match(version) {
+			result = string(re.Find(version))
+			return
+		}
+	}
 
-	return ""
+	return
 }
 
 // Install will untar download file in specified directory
