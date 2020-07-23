@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +18,8 @@ import (
 )
 
 const downloadFolder = "download"
+
+var regexVersion = regexp.MustCompile(`(\d+\.\d+\.\d+)`)
 
 // Download is a struct to hold information about the downloaded file
 type Download struct {
@@ -169,13 +170,13 @@ func (d Download) mergeFiles(sectionList []Section) (err error) {
 func main() {
 	var err error
 
-	goVersion := flag.String("version", "1.14.6", "Go version")
+	forcedGoVersion := flag.String("forced-version", "", "Force Go version")
 	goDirectory := flag.String("directory", "/usr/local", "Go install directory")
 	skipDownload := flag.Bool("skip-download", false, "Skip download")
 	checkVersionOnly := flag.Bool("check-version-only", false, "Check the latest Go version and quit")
 	flag.Parse()
 
-	latestVersion, err := checkLatestVersion()
+	latestVersion, err := CheckLatestVersion()
 	if err != nil {
 		log.Println("can't determine latest version", err)
 	}
@@ -183,6 +184,11 @@ func main() {
 
 	if *checkVersionOnly {
 		return
+	}
+
+	versionToBeInstalled := latestVersion
+	if *forcedGoVersion != "" {
+		versionToBeInstalled = *forcedGoVersion
 	}
 
 	versionFilename := *goDirectory + "/go/VERSION"
@@ -193,19 +199,22 @@ func main() {
 		log.Println("version before install", versionBefore)
 	}
 
-	// TODO maybe not the best check
-	if strings.Contains(versionBefore, *goVersion) {
-		log.Println(*goVersion, "is already installed")
+	versionBeforeBytes := []byte(versionBefore)
+	if regexVersion.Match(versionBeforeBytes) {
+		v := string(regexVersion.Find(versionBeforeBytes))
+		if v == versionToBeInstalled {
+			log.Println(versionToBeInstalled, "is already installed")
 
-		return
+			return
+		}
 	}
 
-	log.Println("Go version to be installed", *goVersion)
+	log.Println("Go version to be installed", versionToBeInstalled)
 	log.Println("Skip download", *skipDownload)
 
 	startTime := time.Now()
 
-	filename := fmt.Sprintf("go%v.linux-amd64.tar.gz", *goVersion)
+	filename := fmt.Sprintf("go%v.linux-amd64.tar.gz", versionToBeInstalled)
 
 	if !*skipDownload {
 		d := Download{
@@ -234,14 +243,15 @@ func main() {
 	log.Println("version after install", versionAfter)
 }
 
-func checkLatestVersion() (result string, err error) {
+// CheckLatestVersion will check Go website for latest version
+func CheckLatestVersion() (result string, err error) {
 	doc, err := htmlquery.LoadURL("https://golang.org/dl/")
 	list := htmlquery.Find(doc, "//span[@class='filename']")
-	re := regexp.MustCompile(`(\d+\.\d+\.\d+)`)
+
 	for _, n := range list {
 		version := []byte(htmlquery.InnerText(n))
-		if re.Match(version) {
-			result = string(re.Find(version))
+		if regexVersion.Match(version) {
+			result = string(regexVersion.Find(version))
 			return
 		}
 	}
@@ -251,7 +261,6 @@ func checkLatestVersion() (result string, err error) {
 
 // Install will untar download file in specified directory
 func Install(filename string, directory string) (err error) {
-
 	cmd := exec.Command("/bin/tar", "-C", directory, "-xzf", filepath.Join(downloadFolder, filename))
 	err = cmd.Start()
 	if err != nil {

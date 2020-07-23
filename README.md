@@ -3,15 +3,18 @@
 This will update your Go installation on Linux. Run with `sudo`.
 
 #### Usage
-```bash
-sudo ./go-updater -version=1.14.6
+```
+Usage of ./go-updater:
+  -check-version-only
+        Check the latest Go version and quit
+  -directory string
+        Go install directory (default "/usr/local")
+  -forced-version string
+        Force Go version
+  -skip-download
+        Skip download
 ```
 
-To skip the download use `-skip-download` flag.
-
-To use an alternate directory for the Go installation use `-directory` flag. Default directory is `/usr/local`.
-
-If you only want to get the latest Go version printed to the console, use the `-check-version-only` flag.
 
 ---
 Inspired by [Go download manager](https://github.com/usmanhalalit/go-download-manager)
