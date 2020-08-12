@@ -19,7 +19,7 @@ import (
 
 const downloadFolder = "download"
 
-var regexVersion = regexp.MustCompile(`(\d+\.\d+\.\d+)`)
+var regexVersion = regexp.MustCompile(`(\d+\.\d+(\.\d+)?)`)
 
 // Download is a struct to hold information about the downloaded file
 type Download struct {
