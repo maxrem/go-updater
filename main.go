@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/antchfx/htmlquery"
 )
 
@@ -209,6 +211,12 @@ func main() {
 		}
 	}
 
+	if ! IsPathWritable(*goDirectory) {
+		log.Println(*goDirectory, "is not writable")
+
+		return
+	}
+
 	log.Println("Go version to be installed", versionToBeInstalled)
 	log.Println("Skip download", *skipDownload)
 
@@ -284,6 +292,10 @@ func GetStringFromText(filename string) (result string, err error) {
 	result = string(b)
 
 	return
+}
+
+func IsPathWritable(path string) bool {
+	return unix.Access(path, unix.W_OK) == nil
 }
 
 func version() string {
